@@ -2,15 +2,19 @@
 const int trigPin = 6; //these two pins are for the ultrasonic thinger
 const int echoPin = 5;
 const float armLength = 13.75;  //catapult lever arm length in inches
-const float g = 32.174; //American gravity
+const float g = 32.174*12; //gravity in in/s^2
 const float pi = 3.141592;
 float angle; //launch angle
+float angles[2];
 float dist;  //Distance from projectile release to target
 float range; //Distance from servo axle to target
+float testrange;
 float height;//height from projectile release to target
-float omega = 2.25; //servo angular rate. This is a total guess.
+float v; //Marble release velocity
 float deltaH = 4.25-2; //height from servo axle to target (Servo axle height minus cup lip height)
 float error = 1; //used for some iterative stuff later
+int counter = 0; //also used for iterations
+bool manual; //manual vs automatic mode
 Servo catapult; //servo object named catapult
 
 void setup() {
@@ -18,31 +22,49 @@ void setup() {
   catapult.attach(3);
   Serial.begin(9600);
   catapult.write(servoAngle(0));
+  Serial.println("Enter m for manual mode, or press any key to continue.");
+  while (!Serial.available());
+  if (Serial.read()=='m'){
+    manual = 1;
+    Serial.println("Manual mode");
+  }
+  else Serial.println("Automatic mode");
 }
 
 void loop() {
-  if (Serial.available()){
-    readAngle();
+  if (Serial.available()&&manual){ //Manual mode: writes user inputted angle to catapult
+    catapult.write(servoAngle(readAngle()));
+  }
+  else if (Serial.available()){ //Automatic mode: hits target automatically. Maybe.
+    readAngle(); //clear serial buffer
     range = rangeFinder()+2.25; //ultrasonic reading plus distance from sensor to servo axle
-    dist = range; //initial guess for distance
-    height = deltaH; //initial guess for height
+    angles[0] = 0;
+    angles[1] = 60*pi/180;
+    testrange = 0;
     Serial.print("Distance (in): ");
     Serial.println(range);
-    while (abs(error)>=1){ //Since launch angle and launch position depend on each other, iteration is needed to find a solution.
-      angle = pi/2-atan((pow(omega*armLength,2)+sqrt(pow(omega*armLength,4)+pow(g*dist,2)-2*g*height*pow(omega*armLength,2)))/(g*dist)); //RADIANS. See https://en.wikipedia.org/wiki/Trajectory_of_a_projectile
-      error = range+armLength*cos(angle)-dist+deltaH+armLength*sin(angle)-height; //This isn't used for anything other than deciding to stop the loop
-      //Serial.println(error); //debug line to make sure solution is converging. Delete once this code works.
-      dist = range+armLength*cos(angle); //re-calculate distance with new launch x
-      Serial.println(dist);
-      height = deltaH+armLength*sin(angle); //re-calculate height with new launch y
+    while ((abs(error)>=1)&&(counter<100)){ //Since launch angle and launch position depend on each other, iteration is needed to find a solution.
+      angle = (angles[0]+angles[1])/2;
+      height = deltaH+armLength*sin(angle);
+      dist = range+armLength*cos(angle);
+      v = 32.98*angle+60.56;
+      testrange = v*cos(angle)/g*(v*sin(angle)+sqrt(pow(v*sin(angle),2)+2*g*height));
+      error = dist-testrange; //This isn't used for anything other than deciding to stop the loop
+      Serial.println(error); //debug line to make sure solution is converging. Delete once this code works.
+      if (error>0){
+        angles[0] = angle;
+      }
+      else{
+        angles[1] = angle;
+      }
+      counter++;
     }
+    counter = 0;
     error = 1; //reset error for the next time something is launched
     catapult.write(servoAngle(angle*180/pi)); //fling catapult to desired angle, but in degrees
     Serial.print("Launch Angle (deg):");
-    Serial.println(angle);
+    Serial.println(angle*180/pi);
     delay(500);
-//    while (!Serial.available()); //wait for arbitrary input to reset. This and the line below it can be deleted after the system is debugged.
-//    readAngle();
     catapult.write(servoAngle(0));
   }
   else{ //this probably doesn't need to be here
