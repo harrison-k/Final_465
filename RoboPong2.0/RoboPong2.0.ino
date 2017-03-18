@@ -1,7 +1,7 @@
 #include <Servo.h>
 const int trigPin = 6; //these two pins are for the ultrasonic thinger
 const int echoPin = 5;
-const float armLength = 13.75;  //catapult lever arm length in inches
+const float armLength = 14;  //catapult lever arm length in inches
 const float g = 32.174*12; //gravity in in/s^2
 const float pi = 3.141592;
 float angle; //launch angle
@@ -11,7 +11,7 @@ float range; //Distance from servo axle to target
 float testrange;
 float height;//height from projectile release to target
 float v; //Marble release velocity
-float deltaH = 4.25-2; //height from servo axle to target (Servo axle height minus cup lip height)
+float deltaH = 4.325-2; //height from servo axle to target (Servo axle height minus cup lip height)
 float error = 1; //used for some iterative stuff later
 int counter = 0; //also used for iterations
 bool manual; //manual vs automatic mode
@@ -37,18 +37,18 @@ void loop() {
   }
   else if (Serial.available()){ //Automatic mode: hits target automatically. Maybe.
     readAngle(); //clear serial buffer
-    range = rangeFinder()+2.25; //ultrasonic reading plus distance from sensor to servo axle
+    range = rangeFinder()+1.675+1; //ultrasonic reading plus distance from sensor to servo axle
     angles[0] = 0;
     angles[1] = 60*pi/180;
     testrange = 0;
     Serial.print("Distance (in): ");
     Serial.println(range);
-    while ((abs(error)>=1)&&(counter<100)){ //Since launch angle and launch position depend on each other, iteration is needed to find a solution.
+    while ((abs(error)>=0.1)&&(counter<100)){ //Since launch angle and launch position depend on each other, iteration is needed to find a solution.
       angle = (angles[0]+angles[1])/2;
       height = deltaH+armLength*sin(angle);
       dist = range+armLength*cos(angle);
-      v = 32.98*angle+60.56;
-      testrange = v*cos(angle)/g*(v*sin(angle)+sqrt(pow(v*sin(angle),2)+2*g*height));
+      v = (32.98)*angle+(60.56);          //+45,-23
+      testrange = v*cos(angle)/g*(v*sin(angle)+sqrt(pow(v*sin(angle),2)+2*g*height))*1.5-11;
       error = dist-testrange; //This isn't used for anything other than deciding to stop the loop
       Serial.println(error); //debug line to make sure solution is converging. Delete once this code works.
       if (error>0){
