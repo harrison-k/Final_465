@@ -47,8 +47,8 @@ void loop() {
       angle = (angles[0]+angles[1])/2;
       height = deltaH+armLength*sin(angle);
       dist = range+armLength*cos(angle);
-      v = (32.98)*angle+(60.56);          //+45,-23
-      testrange = v*cos(angle)/g*(v*sin(angle)+sqrt(pow(v*sin(angle),2)+2*g*height))*1.5-11;
+      v = (32.98)*angle+(60.56);
+      testrange = v*cos(angle)/g*(v*sin(angle)+sqrt(pow(v*sin(angle),2)+2*g*height))*1.5-11; //ballistics math, with some correction
       error = dist-testrange; //This isn't used for anything other than deciding to stop the loop
       Serial.println(error); //debug line to make sure solution is converging. Delete once this code works.
       if (error>0){
